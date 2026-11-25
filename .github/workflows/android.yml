@@ -1,5 +1,5 @@
 
-name: Android CI
+name: Android CI - AI Controller v0.3
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build AI Controller v0.2
+    name: Build AI Controller APK
     runs-on: ubuntu-latest
 
     steps:
@@ -37,28 +37,28 @@ jobs:
       - name: Install Android SDK
         run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Check project ZIP
+      - name: Verify project ZIP
         run: |
           test -f project.zip
           unzip -t project.zip
 
       - name: Extract project
-        run: unzip -q project.zip -d unpacked
+        run: unzip -q project.zip -d extracted
 
-      - name: Verify project
+      - name: Verify source
         run: |
-          test -f unpacked/Ai_Controller_Project/settings.gradle
-          test -f unpacked/Ai_Controller_Project/app/build.gradle
+          test -f extracted/Ai_Controller_Project/settings.gradle
+          test -f extracted/Ai_Controller_Project/app/src/main/java/com/fizz/aicontroller/SpotlightOverlayView.java
 
       - name: Build APK
-        working-directory: unpacked/Ai_Controller_Project
+        working-directory: extracted/Ai_Controller_Project
         run: gradle --no-daemon --stacktrace clean assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Ai-Controller-BhopPro-v0.2-debug
-          path: unpacked/Ai_Controller_Project/app/build/outputs/apk/debug/app-debug.apk
+          name: Ai-Controller-Spotlight-v0.3
+          path: extracted/Ai_Controller_Project/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
           
