@@ -1,4 +1,4 @@
-name: Android CI - AI Controller
+name: Android CI - AI Controller v0.7.1
 
 on:
   push:
@@ -12,6 +12,8 @@ jobs:
   build:
     name: Build AI Controller APK
     runs-on: ubuntu-latest
+    timeout-minutes: 40
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,7 +25,7 @@ jobs:
           java-version: '17'
 
       - name: Set up Gradle 8.13
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.13'
 
@@ -33,30 +35,71 @@ jobs:
       - name: Install Android SDK packages
         run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Verify project archive
+      - name: Show build environment
         run: |
-          test -f project.zip
+          java -version
+          gradle --version
+          sdkmanager --list_installed
+
+      - name: Verify project ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f project.zip || { echo "ERROR: project.zip tidak ditemukan di root repository."; exit 1; }
           unzip -t project.zip
 
-      - name: Extract source project
-        run: unzip -q project.zip -d extracted
-
-      - name: Verify project source
+      - name: Extract project
+        shell: bash
         run: |
+          set -euo pipefail
+          rm -rf extracted
+          unzip -q project.zip -d extracted
           test -f extracted/Ai_Controller_Project/settings.gradle
+          test -f extracted/Ai_Controller_Project/build.gradle
           test -f extracted/Ai_Controller_Project/app/build.gradle
-          test -f extracted/Ai_Controller_Project/app/src/main/java/com/fizz/aicontroller/NavigationCueDetector.java
-          test -f extracted/Ai_Controller_Project/app/src/main/java/com/fizz/aicontroller/CaptureBotService.java
+          test -f extracted/Ai_Controller_Project/app/src/main/AndroidManifest.xml
 
       - name: Build debug APK
+        id: build_apk
+        shell: bash
         working-directory: extracted/Ai_Controller_Project
-        run: gradle --no-daemon --stacktrace clean assembleDebug
+        run: |
+          set +e
+          gradle --no-daemon --no-parallel --stacktrace --warning-mode all --console=plain clean :app:assembleDebug > gradle-build.log 2>&1
+          BUILD_STATUS=$?
+          set -e
 
-      - name: Upload APK
+          {
+            echo "AI Controller v0.7.1 build summary"
+            echo "Exit code: ${BUILD_STATUS}"
+            echo
+            echo "--- Key Gradle messages ---"
+            grep -E -i "(FAILURE:|What went wrong:|Execution failed|error:|AAPT:|Could not resolve|Could not find|No matching variant|Unsupported class file|minimum required Gradle|requires Java|SDK location not found)" gradle-build.log | tail -n 55 || true
+            echo
+            echo "--- Last 45 log lines ---"
+            tail -n 45 gradle-build.log
+          } > build-summary.txt
+
+          cat build-summary.txt
+          exit ${BUILD_STATUS}
+
+      - name: Upload debug APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: AI-Controller-Movement-v0.6-debug
+          name: AI-Controller-v0.7.1-debug
           path: extracted/Ai_Controller_Project/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Controller-build-diagnostics
+          path: |
+            extracted/Ai_Controller_Project/gradle-build.log
+            extracted/Ai_Controller_Project/build-summary.txt
+          if-no-files-found: warn
           retention-days: 7
           
