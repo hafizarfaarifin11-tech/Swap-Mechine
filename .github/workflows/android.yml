@@ -13,58 +13,52 @@ permissions:
 
 jobs:
   build:
-    name: Build AI Controller APK
+    name: Build AI Controller v0.2
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Java 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Install Android SDK packages
-        run: |
-          sdkmanager --install "platform-tools"
-          sdkmanager --install "platforms;android-36"
-          sdkmanager --install "build-tools;36.0.0"
+      - name: Install Android SDK
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Check project ZIP
         run: |
-          test -f project.zip || {
-            echo "ERROR: project.zip tidak ditemukan!"
-            exit 1
-          }
+          test -f project.zip
           unzip -t project.zip
 
       - name: Extract project
-        run: unzip -q project.zip -d extracted
+        run: unzip -q project.zip -d unpacked
 
       - name: Verify project
         run: |
-          test -f extracted/Ai_Controller_Project/settings.gradle
-          test -f extracted/Ai_Controller_Project/app/build.gradle
+          test -f unpacked/Ai_Controller_Project/settings.gradle
+          test -f unpacked/Ai_Controller_Project/app/build.gradle
 
       - name: Build APK
-        working-directory: extracted/Ai_Controller_Project
+        working-directory: unpacked/Ai_Controller_Project
         run: gradle --no-daemon --stacktrace clean assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Ai-Controller-debug-apk
-          path: extracted/Ai_Controller_Project/app/build/outputs/apk/debug/app-debug.apk
+          name: Ai-Controller-BhopPro-v0.2-debug
+          path: unpacked/Ai_Controller_Project/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
           
